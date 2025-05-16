@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, index: true },
     password: { type: String, required: true },
     avatarUrl: { type: String, required: false },
+    collectionIds: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Collection" },
+    ],
+    snippetIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Snippet" }],
   },
   { timestamps: true }
 );

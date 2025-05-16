@@ -1,8 +1,9 @@
+// models/Collection.js
 const mongoose = require("mongoose");
 
 const collectionSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
     description: String,
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -11,11 +12,21 @@ const collectionSchema = new mongoose.Schema(
       index: true,
     },
     snippetIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Snippet" }],
-    sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    sharedWith: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        role: { type: String, enum: ["viewer", "editor"], default: "viewer" },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-const CollectionsModel = mongoose.model("Collection", collectionSchema);
+collectionSchema.index({ name: 1, ownerId: 1 }, { unique: true });
 
+const CollectionsModel = mongoose.model("Collection", collectionSchema);
 module.exports = CollectionsModel;

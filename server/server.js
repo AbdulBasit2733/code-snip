@@ -3,12 +3,9 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const http = require("http");
-
 const AuthRoute = require("./Routes/AuthRoute");
 const SnippetRoute = require("./Routes/SnippetRoute");
 const CollectionRoute = require("./Routes/CollectionRoute");
-const { attachWebSocket } = require("./ws-server"); // Import WebSocket handler
 
 dotenv.config();
 
@@ -29,8 +26,6 @@ app.use("/api/v1/auth", AuthRoute);
 app.use("/api/v1/snippet", SnippetRoute);
 app.use("/api/v1/collection", CollectionRoute);
 
-const server = http.createServer(app);
-
 const startServer = async () => {
   try {
     await mongoose.connect(
@@ -38,10 +33,7 @@ const startServer = async () => {
     );
     console.log("Connected to MongoDB");
 
-    // Attach WebSocket functionality
-    attachWebSocket(server);
-
-    server.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
   } catch (error) {

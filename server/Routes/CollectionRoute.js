@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const AuthMiddleware = require("../Middleware/Auth");
 const CollectionsModel = require("../Models/Collection");
+const UserModel = require("../Models/Users");
 const {
   addSnippetSchema,
   createCollectionSchema,
@@ -14,58 +15,51 @@ router.post("/create", AuthMiddleware, async (req, res) => {
   try {
     const parse = createCollectionSchema.safeParse(req.body);
     if (!parse.success) {
-      return res
-        .status(400)
-        .json({ success: false, error: parse.error.errors });
+      return res.status(400).json({ success: false, error: parse.error.errors });
     }
 
     const { name, description } = parse.data;
-    // console.log(req.user);
     const ownerId = req.user._id;
-    const collection = await CollectionsModel.create({
-      name,
-      description,
-      ownerId,
+
+    const existing = await CollectionsModel.findOne({ name, ownerId });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "Collection name already used." });
+    }
+
+    const collection = await CollectionsModel.create({ name, description, ownerId });
+
+    await UserModel.findByIdAndUpdate(ownerId, {
+      $push: { collectionIds: collection._id },
     });
 
-    res.status(201).json({ success: true, message: "Successfully created" });
+    res.status(201).json({ success: true, message: "Successfully created", collection });
   } catch (error) {
-    console.log(error);
-    
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to create collection" });
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to create collection" });
   }
 });
 
-// Get all collections for user (owned or shared)
+// Get all collections for user
 router.get("/my-collections", AuthMiddleware, async (req, res) => {
   try {
     const userId = req.user._id;
-
     const collections = await CollectionsModel.find({
       $or: [{ ownerId: userId }, { sharedWith: userId }],
     }).sort({ updatedAt: -1 });
 
     res.status(200).json({ success: true, data: collections });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch collections" });
+    res.status(500).json({ success: false, message: "Failed to fetch collections" });
   }
 });
 
-// Get collection by ID (with snippets)
+// Get collection by ID
 router.get("/:id", AuthMiddleware, async (req, res) => {
   try {
-    const collection = await CollectionsModel.findById(req.params.id)
-      .populate("snippetIds")
-      .exec();
+    const collection = await CollectionsModel.findById(req.params.id).populate("snippetIds").exec();
 
     if (!collection) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Collection not found" });
+      return res.status(404).json({ success: false, message: "Collection not found" });
     }
 
     const userId = req.user._id;
@@ -79,30 +73,21 @@ router.get("/:id", AuthMiddleware, async (req, res) => {
 
     res.status(200).json({ success: true, data: collection });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch collection" });
+    res.status(500).json({ success: false, message: "Failed to fetch collection" });
   }
 });
 
-// Update collection (name/description)
+// Update collection
 router.put("/:id", AuthMiddleware, async (req, res) => {
   try {
     const parse = updateCollectionSchema.safeParse(req.body);
     if (!parse.success) {
-      return res
-        .status(400)
-        .json({ success: false, error: parse.error.errors });
+      return res.status(400).json({ success: false, error: parse.error.errors });
     }
 
     const collection = await CollectionsModel.findById(req.params.id);
-    if (
-      !collection ||
-      collection.ownerId.toString() !== req.user._id.toString()
-    ) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Unauthorized or not found" });
+    if (!collection || collection.ownerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized or not found" });
     }
 
     const { name, description } = parse.data;
@@ -116,86 +101,70 @@ router.put("/:id", AuthMiddleware, async (req, res) => {
   }
 });
 
-// Delete a collection
+// Delete collection
 router.delete("/:id", AuthMiddleware, async (req, res) => {
   try {
     const collection = await CollectionsModel.findById(req.params.id);
 
     if (!collection) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Collection not found" });
+      return res.status(404).json({ success: false, message: "Collection not found" });
     }
 
     if (collection.ownerId.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Unauthorized delete" });
+      return res.status(403).json({ success: false, message: "Unauthorized delete" });
     }
 
     await collection.deleteOne();
+    await UserModel.findByIdAndUpdate(req.user._id, {
+      $pull: { collectionIds: collection._id },
+    });
+
     res.status(200).json({ success: true, message: "Collection deleted" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to delete collection" });
+    res.status(500).json({ success: false, message: "Failed to delete collection" });
   }
 });
 
-//  Share collection
+// Share collection
 router.post("/:id/share", AuthMiddleware, async (req, res) => {
   try {
     const parse = shareCollectionSchema.safeParse(req.body);
     if (!parse.success) {
-      return res
-        .status(400)
-        .json({ success: false, error: parse.error.errors });
+      return res.status(400).json({ success: false, error: parse.error.errors });
     }
 
     const { userIds } = parse.data;
     const collection = await CollectionsModel.findById(req.params.id);
 
-    if (
-      !collection ||
-      collection.ownerId.toString() !== req.user._id.toString()
-    ) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Unauthorized or not found" });
+    if (!collection || collection.ownerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized or not found" });
     }
 
-    collection.sharedWith.push(...userIds);
+    const uniqueUsersToAdd = userIds.filter(
+      (id) => !collection.sharedWith.map(String).includes(id)
+    );
+    collection.sharedWith.push(...uniqueUsersToAdd);
     await collection.save();
 
     res.status(200).json({ success: true, message: "Collection shared" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to share collection" });
+    res.status(500).json({ success: false, message: "Failed to share collection" });
   }
 });
 
 // Add snippet to collection
-
 router.post("/:id/add-snippet", AuthMiddleware, async (req, res) => {
   try {
     const parse = addSnippetSchema.safeParse(req.body);
     if (!parse.success) {
-      return res
-        .status(400)
-        .json({ success: false, error: parse.error.errors });
+      return res.status(400).json({ success: false, error: parse.error.errors });
     }
 
     const { snippetId } = parse.data;
     const collection = await CollectionsModel.findById(req.params.id);
 
-    if (
-      !collection ||
-      collection.ownerId.toString() !== req.user._id.toString()
-    ) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Unauthorized or not found" });
+    if (!collection || collection.ownerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized or not found" });
     }
 
     if (!collection.snippetIds.includes(snippetId)) {

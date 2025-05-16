@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import SnippetCard from './SnippetCard';
 
-const SnippetList = ({ snippets }) => {
+const SnippetList = ({ snippets, onEditSnippet  }) => {
   const [sortBy, setSortBy] = useState('updatedAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -71,7 +71,7 @@ const SnippetList = ({ snippets }) => {
       {/* Grid of snippet cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {sortedSnippets.map((snippet) => (
-          <SnippetCard key={snippet.id} snippet={snippet} />
+          <SnippetCard key={snippet.id} snippet={snippet} onEdit={() => onEditSnippet(snippet)} />
         ))}
       </div>
     </div>

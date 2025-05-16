@@ -11,7 +11,12 @@ const updateCollectionSchema = z.object({
 });
 
 const shareCollectionSchema = z.object({
-  userIds: z.array(z.string().regex(/^[a-f\d]{24}$/i, "Invalid user ID")),
+  collaborators: z.array(
+    z.object({
+      userId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid user ID"),
+      role: z.enum(["viewer", "editor"]),
+    })
+  ),
 });
 
 const addSnippetSchema = z.object({

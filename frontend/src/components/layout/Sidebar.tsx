@@ -25,26 +25,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
       icon: <LayoutDashboard size={20} />,
       path: "/",
     },
-    {
-      title: "Collections",
-      icon: <Library size={20} />,
-      path: "/collections",
-    },
-    {
-      title: "Snippets",
-      icon: <SquareDashedBottomCode size={20} />,
-      path: "/snippets",
-    },
-    {
-      title: "Editor",
-      icon: <Code size={20} />,
-      path: "/editor",
-    },
-    {
-      title: "Share Snippets",
-      icon: <Share2 size={20} />,
-      path: "/share",
-    },
   ];
 
   return (
