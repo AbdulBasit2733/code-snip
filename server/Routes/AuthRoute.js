@@ -6,21 +6,12 @@ const UserModel = require("../Models/Users");
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = require("../config/config");
 const AuthMiddleware = require("../Middleware/Auth");
+const { createUserSchema, loginUserSchema } = require("../utils/validations");
 
-const registerSchema = z.object({
-  username: z.string().min(3),
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
 
 router.post("/register", async (req, res) => {
   try {
-    const parsedData = registerSchema.safeParse(req.body);
+    const parsedData = createUserSchema.safeParse(req.body);
 
     if (!parsedData.success) {
       return res.status(400).json({
@@ -64,7 +55,7 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     // 1. Validate input using Zod
-    const parsedData = loginSchema.safeParse(req.body);
+    const parsedData = loginUserSchema.safeParse(req.body);
     if (!parsedData.success) {
       return res.status(400).json({
         success: false,
@@ -94,11 +85,7 @@ router.post("/login", async (req, res) => {
     }
 
     // 4. Create JWT token
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
 
     // 5. Send token as httpOnly cookie
     res.cookie("token", token, {

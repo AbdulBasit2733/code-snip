@@ -1,14 +1,14 @@
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = require("./config/config");
+const JWT_SECRET = require("../config/config");
 
-function CheckUser(token) {
-  const decoded = jwt.verify(token, JWT_SECRET);
-  if (!decoded || !decoded.id) {
-    ws.close();
+async function CheckUser(token) {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded.id || null;
+  } catch (err) {
+    console.error("JWT verification failed:", err.message);
     return null;
   }
-
-  return decoded.id;
 }
 
 module.exports = CheckUser;

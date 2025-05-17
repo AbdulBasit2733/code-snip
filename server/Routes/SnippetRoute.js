@@ -1,37 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const { z } = require("zod");
-
 const AuthMiddleware = require("../Middleware/Auth");
+
 const SnippetModel = require("../Models/Snippet");
 const UserModel = require("../Models/Users");
 const CollectionModel = require("../Models/Collection");
 
-// Zod schemas
-const CreateSnippetSchema = z.object({
-  title: z.string().min(1),
-  language: z.string().min(1),
-  code: z.string().min(1),
-  collectionId: z.string().optional(),
-  collaboratorIds: z.array(z.string().min(1)).optional(),
-});
-
-const UpdateSnippetSchema = z.object({
-  title: z.string().optional(),
-  code: z.string().optional(),
-  language: z.string().optional(),
-});
-
-const ShareSnippetSchema = z.object({
-  collaboratorIds: z.array(z.string().min(1)),
-});
+const { createSnippetSchema } = require("../utils/validations"); // Assuming all schemas are exported from Validators/index.js
 
 // Helper to check snippet access
 async function checkSnippetAccess(snippet, userId) {
   if (!snippet) return false;
   if (snippet.authorId.toString() === userId.toString()) return true;
-  if (snippet.collaborators.some((c) => c.user.toString() === userId.toString()))
+  if (
+    snippet.collaborators.some((c) => c.user.toString() === userId.toString())
+  )
     return true;
   return false;
 }
@@ -40,20 +24,24 @@ async function checkSnippetAccess(snippet, userId) {
 router.post("/create-snippet", AuthMiddleware, async (req, res) => {
   try {
     const userId = req.user._id;
-    const parsed = CreateSnippetSchema.safeParse(req.body);
+    const parsed = createSnippetSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ success: false, errors: parsed.error.errors });
+      return res
+        .status(400)
+        .json({ success: false, errors: parsed.error.errors });
     }
 
-    const { title, code, language, collectionId, collaboratorIds = [] } = parsed.data;
+    const {
+      title,
+      code,
+      language,
+      collectionId,
+      collaborators = [],
+    } = parsed.data;
 
-    // Prevent duplicate collaborator IDs
-    const uniqueCollaborators = [...new Set(collaboratorIds)];
-
-    const collaborators = uniqueCollaborators.map((id) => ({
-      user: id,
-      permission: "edit", // default permission
-    }));
+    const uniqueCollaborators = [
+      ...new Map(collaborators.map((c) => [c.user, c])).values(),
+    ];
 
     const snippet = await SnippetModel.create({
       title,
@@ -61,25 +49,29 @@ router.post("/create-snippet", AuthMiddleware, async (req, res) => {
       language,
       authorId: userId,
       collectionId: collectionId || null,
-      collaborators,
+      collaborators: uniqueCollaborators,
     });
 
-    // Update user's snippetIds
-    await UserModel.findByIdAndUpdate(userId, { $addToSet: { snippetIds: snippet._id } });
+    await UserModel.findByIdAndUpdate(userId, {
+      $addToSet: { snippetIds: snippet._id },
+    });
 
-    // If collectionId provided, add snippetId to that collection
     if (collectionId) {
-      await CollectionModel.findByIdAndUpdate(collectionId, { $addToSet: { snippetIds: snippet._id } });
+      await CollectionModel.findByIdAndUpdate(collectionId, {
+        $addToSet: { snippetIds: snippet._id },
+      });
     }
 
-    res.status(201).json({ success: true, message: "Snippet created successfully", snippet });
+    res
+      .status(201)
+      .json({ success: true, message: "Snippet created", snippet });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// Get My Snippets (author or collaborator)
+// Get My Snippets
 router.get("/my-snippets", AuthMiddleware, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -90,21 +82,27 @@ router.get("/my-snippets", AuthMiddleware, async (req, res) => {
 
     res.status(200).json({ success: true, data: snippets });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch snippets" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch snippets" });
   }
 });
 
-// Get Snippet by ID with access check
+// Get Snippet by ID
 router.get("/:id", AuthMiddleware, async (req, res) => {
   try {
     const snippet = await SnippetModel.findById(req.params.id);
     if (!snippet) {
-      return res.status(404).json({ success: false, message: "Snippet not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Snippet not found" });
     }
 
     const userId = req.user._id;
     if (!(await checkSnippetAccess(snippet, userId))) {
-      return res.status(403).json({ success: false, message: "Unauthorized access" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized access" });
     }
 
     res.status(200).json({ success: true, snippet });
@@ -116,22 +114,22 @@ router.get("/:id", AuthMiddleware, async (req, res) => {
 // Update Snippet
 router.put("/:id", AuthMiddleware, async (req, res) => {
   try {
-    const parsed = UpdateSnippetSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ success: false, errors: parsed.error.errors });
-    }
-
     const snippet = await SnippetModel.findById(req.params.id);
     if (!snippet) {
-      return res.status(404).json({ success: false, message: "Snippet not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Snippet not found" });
     }
 
     const userId = req.user._id;
     if (!(await checkSnippetAccess(snippet, userId))) {
-      return res.status(403).json({ success: false, message: "Unauthorized update" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized update" });
     }
 
-    Object.assign(snippet, parsed.data);
+    const updates = req.body;
+    Object.assign(snippet, updates);
     await snippet.save();
 
     res.status(200).json({ success: true, snippet });
@@ -146,19 +144,25 @@ router.delete("/:id", AuthMiddleware, async (req, res) => {
     const snippet = await SnippetModel.findById(req.params.id);
 
     if (!snippet) {
-      return res.status(404).json({ success: false, message: "Snippet not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Snippet not found" });
     }
 
     if (snippet.authorId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: "Only owner can delete" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Only owner can delete" });
     }
 
-    // Remove snippetId from user's snippetIds
-    await UserModel.findByIdAndUpdate(req.user._id, { $pull: { snippetIds: snippet._id } });
+    await UserModel.findByIdAndUpdate(req.user._id, {
+      $pull: { snippetIds: snippet._id },
+    });
 
-    // Remove snippetId from collection's snippetIds if assigned
     if (snippet.collectionId) {
-      await CollectionModel.findByIdAndUpdate(snippet.collectionId, { $pull: { snippetIds: snippet._id } });
+      await CollectionModel.findByIdAndUpdate(snippet.collectionId, {
+        $pull: { snippetIds: snippet._id },
+      });
     }
 
     await snippet.deleteOne();
@@ -171,33 +175,44 @@ router.delete("/:id", AuthMiddleware, async (req, res) => {
 // Share Snippet
 router.post("/:id/share", AuthMiddleware, async (req, res) => {
   try {
-    const parsed = ShareSnippetSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ success: false, errors: parsed.error.errors });
-    }
-
-    const { collaboratorIds } = parsed.data;
+    const { collaboratorIds, permission } = parseResult.data;
 
     const snippet = await SnippetModel.findById(req.params.id);
     if (!snippet) {
-      return res.status(404).json({ success: false, message: "Snippet not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Snippet not found",
+      });
     }
 
     if (snippet.authorId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: "Only owner can share" });
+      return res.status(403).json({
+        success: false,
+        message: "Only the owner can share this snippet",
+      });
     }
 
-    // Prevent duplicates
-    const existingIds = snippet.collaborators.map((c) => c.user.toString());
+    const existingMap = new Map(
+      snippet.collaborators.map((c) => [c.user.toString(), c])
+    );
+
     collaboratorIds.forEach((id) => {
-      if (!existingIds.includes(id)) {
-        snippet.collaborators.push({ user: id, permission: "edit" });
+      if (existingMap.has(id)) {
+        // Update permission
+        existingMap.get(id).permission = permission;
+      } else {
+        // Add new collaborator
+        snippet.collaborators.push({ user: id, permission });
       }
     });
 
     await snippet.save();
 
-    res.status(200).json({ success: true, message: "Snippet shared", snippet });
+    res.status(200).json({
+      success: true,
+      message: "Collaborators updated successfully",
+      snippet,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Sharing failed" });

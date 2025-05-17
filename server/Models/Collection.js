@@ -9,24 +9,13 @@ const collectionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     snippetIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Snippet" }],
-    sharedWith: [
-      {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-          required: true,
-        },
-        role: { type: String, enum: ["viewer", "editor"], default: "viewer" },
-      },
-    ],
   },
   { timestamps: true }
 );
 
 collectionSchema.index({ name: 1, ownerId: 1 }, { unique: true });
 
-const CollectionsModel = mongoose.model("Collection", collectionSchema);
-module.exports = CollectionsModel;
+const CollectionModel = mongoose.model("Collection", collectionSchema);
+module.exports = CollectionModel;
