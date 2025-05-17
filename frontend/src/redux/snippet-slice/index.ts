@@ -185,7 +185,6 @@ const snippetSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload?.message || null;
       })
-
       .addCase(deleteSnippet.pending, (state) => {
         state.isLoading = true;
       })
@@ -196,7 +195,6 @@ const snippetSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload?.message || null;
       })
-
       .addCase(shareSnippet.pending, (state) => {
         state.isLoading = true;
       })

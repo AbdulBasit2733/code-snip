@@ -1,25 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
 import { BACKEND_URL } from "../../config/config";
+import type { AuthResponse, AuthState } from "../../types/auth";
 
 // Types
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-}
 
-interface AuthResponse {
-  success: boolean;
-  message: string;
-  data?: User;
-}
 
-interface AuthState {
-  isAuthenticated: boolean;
-  user: User | null;
-  isLoading: boolean;
-}
 
 interface LoginFormData {
   email: string;
@@ -134,6 +120,8 @@ export const logoutFromServer = createAsyncThunk<
   }
 });
 
+
+
 // Initial state
 const initialState: AuthState = {
   isAuthenticated: false,
@@ -198,7 +186,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.success ? null : state.user;
         state.isAuthenticated = !action.payload.success;
-      });
+      })
   },
 });
 

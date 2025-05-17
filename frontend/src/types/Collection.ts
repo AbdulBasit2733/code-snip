@@ -4,7 +4,6 @@ export interface Collection {
     description?: string;
     ownerId: string;
     snippetIds: string[];
-    sharedWith: string[];
     createdAt: string;
     updatedAt: string;
   }
@@ -24,11 +23,6 @@ export interface Collection {
     id: string;
     name?: string;
     description?: string;
-  }
-  
-  export interface ShareCollectionData {
-    id: string;
-    userIds: string[];
   }
   
   export interface AddSnippetData {

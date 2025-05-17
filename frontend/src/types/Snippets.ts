@@ -26,7 +26,6 @@ export interface Snippet {
   
   export interface CreateSnippetData {
     title: string;
-    code: string;
     language: string;
     collectionId?: string;
   }

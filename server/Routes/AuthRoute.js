@@ -8,7 +8,6 @@ const JWT_SECRET = require("../config/config");
 const AuthMiddleware = require("../Middleware/Auth");
 const { createUserSchema, loginUserSchema } = require("../utils/validations");
 
-
 router.post("/register", async (req, res) => {
   try {
     const parsedData = createUserSchema.safeParse(req.body);
@@ -108,6 +107,28 @@ router.post("/login", async (req, res) => {
     });
   } catch (error) {
     console.error("Login Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
+
+router.get("/all-collaborators", AuthMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const users = await UserModel.find(
+      { _id: { $ne: userId } }, // exclude the authenticated user
+      "-password" // exclude password field
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error("Fetch All Users Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",

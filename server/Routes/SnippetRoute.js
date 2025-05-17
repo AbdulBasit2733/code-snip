@@ -33,7 +33,6 @@ router.post("/create-snippet", AuthMiddleware, async (req, res) => {
 
     const {
       title,
-      code,
       language,
       collectionId,
       collaborators = [],
@@ -45,7 +44,6 @@ router.post("/create-snippet", AuthMiddleware, async (req, res) => {
 
     const snippet = await SnippetModel.create({
       title,
-      code,
       language,
       authorId: userId,
       collectionId: collectionId || null,

@@ -5,11 +5,9 @@ import Login from "./pages/Login";
 import CheckAuth from "./components/common/CheckAuth";
 import AuthLayout from "./components/layout/AuthLayout";
 import Layout from "./components/layout/Layout";
-import Dashboard from "./pages/Dashboard";
 import { useAppDispatch, useAppSelector } from "./hooks/reduxHooks";
 import { checkAuth } from "./redux/auth-slice";
-import CodeEditor from "./components/snippets/CodeEditor";
-import Editor from "./pages/Editor";
+import Dashboard from "./pages/Dashboard";
 
 const App: React.FC = () => {
   const { isLoading, isAuthenticated } = useAppSelector((state) => state.auth);
@@ -48,7 +46,6 @@ const App: React.FC = () => {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="/editor/:id" element={<Editor />} />
       </Route>
     </Routes>
   );

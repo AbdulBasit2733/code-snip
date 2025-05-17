@@ -1,21 +1,9 @@
-import { useNavigate } from "react-router-dom";
+import React from 'react'
 
-const SnippetCard = ({ snippet }) => {
-  const navigate = useNavigate();
-
-  const handleClick = () => {
-    navigate(`/editor/${snippet._id}`);
-  };
-
+const SnippetCard = () => {
   return (
-    <div
-      onClick={handleClick}
-      className="p-4 border rounded hover:bg-gray-50 cursor-pointer"
-    >
-      <h2 className="text-lg font-bold">{snippet.title}</h2>
-      <p className="text-sm text-gray-600">{snippet.language}</p>
-    </div>
-  );
-};
+    <div>SnippetCard</div>
+  )
+}
 
 export default SnippetCard
