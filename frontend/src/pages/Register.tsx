@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { signup } from "../redux/auth-slice";
+import { useAppDispatch } from "../hooks/reduxHooks";
+import { toast } from "sonner";
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -13,7 +16,7 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const dispatch = useAppDispatch();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -64,14 +67,16 @@ const Register: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // In a real application, you would make an API call here
-      // For example: await registerUser(formData);
       console.log("Registration data:", formData);
 
-      // Simulate successful registration
-      setTimeout(() => {
-        navigate("/login", { state: { registrationSuccess: true } });
-      }, 1000);
+      dispatch(signup(formData)).then((data) => {
+        if (data.payload?.success) {
+          toast.success("Account created successfully!");
+          navigate("/auth/login");
+        } else {
+          toast.error(data.payload?.message);
+        }
+      });
     } catch (error) {
       console.error("Registration error:", error);
       setErrors({ form: "Registration failed. Please try again." });

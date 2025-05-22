@@ -15,7 +15,6 @@ const collectionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-collectionSchema.index({ name: 1, ownerId: 1 }, { unique: true });
 
 const CollectionModel = mongoose.model("Collection", collectionSchema);
 module.exports = CollectionModel;

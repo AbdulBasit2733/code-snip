@@ -1,8 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios, { AxiosError } from "axios";
 import { BACKEND_URL } from "../../config/config";
-import type { CreateSnippetData, ShareSnippetData, SnippetResponse, SnippetState, UpdateSnippetData } from "../../types/Snippets";
-
+import type {
+  CreateSnippetData,
+  ShareSnippetData,
+  SnippetResponse,
+  SnippetState,
+  UpdateSnippetData,
+} from "../../types/Snippets";
 
 export const createSnippet = createAsyncThunk<
   SnippetResponse,
@@ -10,11 +15,15 @@ export const createSnippet = createAsyncThunk<
   { rejectValue: SnippetResponse }
 >("snippet/create", async (data, { rejectWithValue }) => {
   try {
-    console.log(data);
-    
-    const res = await axios.post(`${BACKEND_URL}/snippet/create-snippet`, data, {
-      withCredentials: true,
-    });
+    // console.log("Creating Snippet Slice", data);
+
+    const res = await axios.post(
+      `${BACKEND_URL}/snippet/create-snippet`,
+      data,
+      {
+        withCredentials: true,
+      }
+    );
     return res.data;
   } catch (err) {
     const error = err as AxiosError<{ message?: string }>;
@@ -105,27 +114,43 @@ export const shareSnippet = createAsyncThunk<
   SnippetResponse,
   ShareSnippetData,
   { rejectValue: SnippetResponse }
->("snippet/share", async ({ id, collaboratorIds }, { rejectWithValue }) => {
+>("snippet/share", async ({ id, collaborators }, { rejectWithValue }) => {
   try {
     const res = await axios.post(
       `${BACKEND_URL}/snippet/${id}/share`,
-      { collaboratorIds },
+      { collaborators },
       { withCredentials: true }
     );
     return res.data;
-  } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    return rejectWithValue({
-      success: false,
-      message: error.response?.data?.message || "Failed to share snippet",
-    });
+  } catch (err: any) {
+    const message = err?.response?.data?.message || "Failed to share snippet";
+    return rejectWithValue({ success: false, message });
   }
 });
+
+export const leaveSnippet = createAsyncThunk(
+  "snippet/leave",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        `${BACKEND_URL}/snippet/${id}/leave`,
+        {},
+        { withCredentials: true }
+      );
+      
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue({
+        success: false,
+        message: error?.response?.data?.message || "Failed to leave snippet",
+      });
+    }
+  }
+);
 
 // Initial State
 const initialState: SnippetState = {
   snippets: [],
-  currentSnippet: null,
   isLoading: false,
   error: null,
 };
@@ -155,7 +180,7 @@ const snippetSlice = createSlice({
       })
       .addCase(getMySnippets.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.snippets = action.payload.data || [];
+        state.snippets = action?.payload?.data || [];
       })
       .addCase(getMySnippets.rejected, (state, action) => {
         state.isLoading = false;

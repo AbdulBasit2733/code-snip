@@ -32,7 +32,6 @@ export interface Collection {
   
   export interface CollectionState {
     collections: Collection[];
-    selectedCollection: Collection | null;
     isLoading: boolean;
     error: string | null;
   }

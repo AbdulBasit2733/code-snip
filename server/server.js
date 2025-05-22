@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const AuthRoute = require("./Routes/AuthRoute");
 const SnippetRoute = require("./Routes/SnippetRoute");
 const CollectionRoute = require("./Routes/CollectionRoute");
+const CodeRoute = require("./Routes/CodeRoute");
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use("/api/v1/auth", AuthRoute);
 app.use("/api/v1/snippet", SnippetRoute);
 app.use("/api/v1/collection", CollectionRoute);
+app.use("/api/v1/codebase", CodeRoute);
 
 const startServer = async () => {
   try {

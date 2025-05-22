@@ -7,7 +7,6 @@ import type {
   AddSnippetData,
   Collection,
   CollectionState,
-  ShareCollectionData,
   UpdateCollectionData,
 } from "../../types/Collection";
 
@@ -41,7 +40,7 @@ export const createCollection = createAsyncThunk<
   { rejectValue: CollectionResponse }
 >("collections/createCollection", async (data, { rejectWithValue }) => {
   try {
-    console.log(data);
+    // console.log(data);
     
     const response = await axios.post<CollectionResponse>(
       `${BACKEND_URL}/collection/create`,
@@ -121,7 +120,6 @@ export const deleteCollection = createAsyncThunk<
 
 export const shareCollection = createAsyncThunk<
   CollectionResponse,
-  ShareCollectionData,
   { rejectValue: CollectionResponse }
 >("collections/share", async ({ id, userIds }, { rejectWithValue }) => {
   try {
@@ -164,7 +162,6 @@ export const addSnippetToCollection = createAsyncThunk<
 // Initial state
 const initialState: CollectionState = {
   collections: [],
-  selectedCollection: null,
   isLoading: false,
   error: null,
 };
@@ -194,12 +191,6 @@ const collectionSlice = createSlice({
       })
       .addCase(createCollection.fulfilled, (state) => {
         state.isLoading = false;
-      })
-      .addCase(getCollectionById.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.selectedCollection = action.payload.success
-          ? (action.payload.data as Collection) || null
-          : null;
       })
       .addCase(updateCollection.pending, (state) => {
         state.isLoading = true;

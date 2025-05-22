@@ -31,12 +31,7 @@ router.post("/create-snippet", AuthMiddleware, async (req, res) => {
         .json({ success: false, errors: parsed.error.errors });
     }
 
-    const {
-      title,
-      language,
-      collectionId,
-      collaborators = [],
-    } = parsed.data;
+    const { title, language, collectionId, collaborators = [] } = parsed.data;
 
     const uniqueCollaborators = [
       ...new Map(collaborators.map((c) => [c.user, c])).values(),
@@ -76,9 +71,18 @@ router.get("/my-snippets", AuthMiddleware, async (req, res) => {
 
     const snippets = await SnippetModel.find({
       $or: [{ authorId: userId }, { "collaborators.user": userId }],
-    }).sort({ updatedAt: -1 });
+    })
+      .sort({ updatedAt: -1 })
+      .populate("collectionId")
+      .populate("collaborators.user", "-password")
+      .lean();
+    const data = snippets.map((snippet) => {
+      const { collectionId, ...rest } = snippet;
+      return { ...rest, collection: collectionId };
+    });
+    console.log(data);
 
-    res.status(200).json({ success: true, data: snippets });
+    res.status(200).json({ success: true, data: data });
   } catch (error) {
     res
       .status(500)
@@ -173,48 +177,86 @@ router.delete("/:id", AuthMiddleware, async (req, res) => {
 // Share Snippet
 router.post("/:id/share", AuthMiddleware, async (req, res) => {
   try {
-    const { collaboratorIds, permission } = parseResult.data;
-
+    const { collaborators } = req.body;
     const snippet = await SnippetModel.findById(req.params.id);
-    if (!snippet) {
-      return res.status(404).json({
-        success: false,
-        message: "Snippet not found",
-      });
+
+    if (!snippet?.title || !snippet?.language) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Snippet not found" });
     }
 
     if (snippet.authorId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Only the owner can share this snippet",
-      });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Only the owner can share this snippet",
+        });
     }
 
     const existingMap = new Map(
       snippet.collaborators.map((c) => [c.user.toString(), c])
     );
 
-    collaboratorIds.forEach((id) => {
+    collaborators.forEach(({ id, permission }) => {
       if (existingMap.has(id)) {
-        // Update permission
         existingMap.get(id).permission = permission;
       } else {
-        // Add new collaborator
         snippet.collaborators.push({ user: id, permission });
       }
     });
 
     await snippet.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Collaborators updated successfully",
-      snippet,
-    });
+    res.json({ success: true, message: "Invited" });
   } catch (error) {
-    console.error(error);
+    console.error("Share snippet error:", error);
     res.status(500).json({ success: false, message: "Sharing failed" });
   }
 });
+
+//leave snippet
+
+router.post('/:id/leave', AuthMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const snippetId = req.params.id;
+
+    const snippet = await SnippetModel.findById(snippetId);
+    
+    if (!snippet) {
+      return res.status(404).json({ success: false, message: "Snippet not found" });
+    }
+
+    const isCollaborator = snippet.collaborators.some(
+      (collab) => collab.user.toString() === userId.toString()
+    );
+
+    if (!isCollaborator) {
+      return res.status(400).json({
+        success: false,
+        message: "You are not a collaborator of this snippet",
+      });
+    }
+
+    snippet.collaborators = snippet.collaborators.filter(
+      (collab) => collab.user.toString() !== userId.toString()
+    );
+
+    await snippet.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "You have successfully left the snippet",
+    });
+  } catch (error) {
+    console.error("Leave snippet error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
+
 
 module.exports = router;

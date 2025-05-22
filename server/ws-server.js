@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { WebSocketServer } = require("ws");
 const mongoose = require("mongoose");
-
+const cookie = require("cookie");
 const CheckUser = require("./utils/checkUser");
 const CodeModel = require("./Models/Code");
 const SnippetModel = require("./Models/Snippet");
@@ -20,11 +20,14 @@ mongoose
     process.exit(1);
   });
 wss.on("connection", async function connection(ws, request) {
-  const url = request.url;
-  if (!url) return ws.close();
+  const cookies = cookie.parse(request.headers.cookie || "");
+  const token = cookies.token;
+  if(!token) return ws.close()
+  // const url = request.url;
+  // if (!url) return ws.close();
 
-  const queryParams = new URLSearchParams(url.split("?")[1]);
-  const token = queryParams.get("token") || "";
+  // const queryParams = new URLSearchParams(url.split("?")[1]);
+  // const token = queryParams.get("token") || "";
 
   const userId = await CheckUser(token);
   if (!userId) return ws.close();
@@ -98,7 +101,7 @@ wss.on("connection", async function connection(ws, request) {
             );
           }
         });
-        console.log("code_change", users);
+        // console.log("code_change", users);
 
         // Save code edit to the database
         let codeDoc = await CodeModel.findOne({ snippetId });
@@ -130,6 +133,24 @@ wss.on("connection", async function connection(ws, request) {
   });
 
   ws.on("close", async () => {
-    console.log("Disconnected", userId);
-  });
+  console.log("Disconnected", userId);
+  const index = users.findIndex((u) => u.userId === userId && u.ws === ws);
+  if (index !== -1) {
+    const user = users[index];
+    for (const snippetId of user.snippets) {
+      const snippet = await SnippetModel.findById(snippetId);
+      if (snippet) {
+        snippet.liveSession.activeUsers = snippet.liveSession.activeUsers.filter(
+          (id) => !id.equals(user.userId)
+        );
+        if (snippet.liveSession.activeUsers.length === 0) {
+          snippet.liveSession.isLive = false;
+          snippet.liveSession.startedAt = null;
+        }
+        await snippet.save();
+      }
+    }
+    users.splice(index, 1); // Remove from active users list
+  }
+});
 });

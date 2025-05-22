@@ -13,7 +13,7 @@ interface LoginFormData {
 }
 
 interface SignupFormData {
-  name: string;
+  username: string;
   email: string;
   password: string;
 }
@@ -35,7 +35,7 @@ export const checkAuth = createAsyncThunk<
         withCredentials: true,
       }
     );
-    console.log(response);
+    // console.log(response);
 
     return response.data;
   } catch (err) {
@@ -52,7 +52,7 @@ export const login = createAsyncThunk<
   LoginFormData,
   { rejectValue: AuthResponse }
 >("auth/login", async (formData, { rejectWithValue }) => {
-  console.log("Form Data", formData);
+  // console.log("Form Data", formData);
 
   try {
     const response = await axios.post<AuthResponse>(
@@ -82,7 +82,7 @@ export const signup = createAsyncThunk<
 >("auth/signup", async (formData, { rejectWithValue }) => {
   try {
     const response = await axios.post<AuthResponse>(
-      `${BACKEND_URL}/auth/signup`,
+      `${BACKEND_URL}/auth/register`,
       formData,
       { withCredentials: true }
     );
@@ -105,9 +105,8 @@ export const logoutFromServer = createAsyncThunk<
   { rejectValue: AuthResponse }
 >("auth/logout", async (_, { rejectWithValue }) => {
   try {
-    const response = await axios.post<AuthResponse>(
+    const response = await axios.get<AuthResponse>(
       `${BACKEND_URL}/auth/logout`,
-      {},
       { withCredentials: true }
     );
     return response.data;
@@ -141,7 +140,7 @@ const authSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(checkAuth.fulfilled, (state, action) => {
-        console.log("Action", action);
+        // console.log("Action", action);
 
         state.isLoading = false;
         state.user = action.payload.success ? action.payload.data || null : null;
@@ -185,7 +184,7 @@ const authSlice = createSlice({
       .addCase(logoutFromServer.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.success ? null : state.user;
-        state.isAuthenticated = !action.payload.success;
+        state.isAuthenticated = action.payload.success ? false : state.isAuthenticated;
       })
   },
 });

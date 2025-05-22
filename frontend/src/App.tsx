@@ -8,6 +8,7 @@ import Layout from "./components/layout/Layout";
 import { useAppDispatch, useAppSelector } from "./hooks/reduxHooks";
 import { checkAuth } from "./redux/auth-slice";
 import Dashboard from "./pages/Dashboard";
+import CodeRoom from "./components/code-editor/CodeRoom";
 
 const App: React.FC = () => {
   const { isLoading, isAuthenticated } = useAppSelector((state) => state.auth);
@@ -46,6 +47,7 @@ const App: React.FC = () => {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="/code-editor/:snippetId" element={<CodeRoom />} />
       </Route>
     </Routes>
   );
