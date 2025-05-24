@@ -4,7 +4,6 @@ import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
-import { json } from "@codemirror/lang-json";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

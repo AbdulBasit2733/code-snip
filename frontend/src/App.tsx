@@ -47,8 +47,8 @@ const App: React.FC = () => {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="/code-editor/:snippetId" element={<CodeRoom />} />
       </Route>
+      <Route path="/code-editor/:snippetId" element={<CodeRoom />} />
     </Routes>
   );
 };

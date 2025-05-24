@@ -1,23 +1,29 @@
 const mongoose = require("mongoose");
 
-const CodeSchema = new mongoose.Schema(
+const CodeEditSchema = new mongoose.Schema(
   {
     snippetId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Snippet",
       required: true,
     },
-    edits: [
-      {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        code: String, // The portion of code added/edited
-        timestamp: { type: Date, default: Date.now },
-      },
-    ],
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    action: {
+      type: String,
+      enum: ["insert", "delete", "update"],
+      required: true,
+    },
+    startLine: Number,
+    endLine: Number,
+    code: String, // the actual code inserted/updated
+    timestamp: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
-CodeSchema.index({ snippetId: 1 });
 
-const CodeModel = mongoose.model("Code", CodeSchema);
-module.exports = CodeModel;
+const CodeEditsModel = mongoose.model("Code", CodeEditSchema);
+module.exports = CodeEditsModel;

@@ -3,10 +3,20 @@ import axios from "axios";
 import { BACKEND_URL } from "../../config/config";
 
 export interface CodeProps {
-  code: string;
-  userId: string;
-  timestamp: Date;
+  _id: string;
+  snippetId: string;
+  userId: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  action: "insert" | "delete" | "update";
+  startLine?: number;
+  endLine?: number;
+  code?: string;
+  timestamp: string; // ISO string from DB (use Date if you parse it)
 }
+
 
 interface INITIAL_STATE {
   isLoading: boolean;
@@ -21,8 +31,6 @@ const initialState:INITIAL_STATE = {
 export const getCodeBySnippetId = createAsyncThunk(
   "codebase/codeBySnippetId",
   async (snippetId, { rejectWithValue }) => {
-    // console.log("snippetId", snippetId);
-
     try {
       const res = await axios.get(`${BACKEND_URL}/codebase/code/${snippetId}`, {
         withCredentials: true,

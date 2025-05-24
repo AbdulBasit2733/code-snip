@@ -2,15 +2,15 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const AuthMiddleware = require("../Middleware/Auth");
-const CodeModel = require("../Models/Code");
 const SnippetModel = require("../Models/Snippet");
+const CodeEditsModel = require("../Models/Code");
 
 router.get("/code/:snippetId", AuthMiddleware, async (req, res) => {
   try {
     const userId = req.user._id;
     const snippetId = req.params.snippetId;
 
-    // Validate snippetId format
+    // Validate snippetId
     if (!mongoose.Types.ObjectId.isValid(snippetId)) {
       return res.status(400).json({
         success: false,
@@ -18,7 +18,7 @@ router.get("/code/:snippetId", AuthMiddleware, async (req, res) => {
       });
     }
 
-    // Check if user is a collaborator or the owner
+    // Check permission
     const snippet = await SnippetModel.findOne(
       {
         _id: snippetId,
@@ -27,7 +27,7 @@ router.get("/code/:snippetId", AuthMiddleware, async (req, res) => {
           { "collaborators.user": userId }
         ],
       },
-      { _id: 1 } // project only _id to reduce payload
+      { _id: 1 }
     ).lean();
 
     if (!snippet) {
@@ -37,37 +37,25 @@ router.get("/code/:snippetId", AuthMiddleware, async (req, res) => {
       });
     }
 
-    // Fetch code document (with edits history)
-    const codeDoc = await CodeModel.findOne(
-      { snippetId },
-      { edits: 1 }
-    ).lean();
-
-    if (!codeDoc || !Array.isArray(codeDoc.edits) || codeDoc.edits.length === 0) {
-      return res.status(200).json({
-        success: true,
-        edits: [], // return empty array if no edits
-      });
-    }
-
-    // Format edits
-    const formattedEdits = codeDoc.edits.map((edit) => ({
-      code: edit.code,
-      userId: edit.userId,
-      timestamp: edit.timestamp,
-    }));
+    // Fetch all code edits for this snippet
+    const codeEdits = await CodeEditsModel.find({ snippetId })
+      .sort({ createdAt: 1 })
+      .select("userId action startLine endLine code timestamp")
+      .populate("userId", "name email") // optional: get user name/email
+      .lean();
 
     res.status(200).json({
       success: true,
-      data: formattedEdits,
+      data: codeEdits,
     });
   } catch (error) {
-    console.error("❌ Error fetching code history:", error.message);
+    console.error("❌ Error fetching code edits:", error.message);
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
     });
   }
 });
+
 
 module.exports = router;
